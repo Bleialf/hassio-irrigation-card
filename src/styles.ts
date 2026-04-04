@@ -193,6 +193,21 @@ export const cardStyles = css`
     padding: 8px 0 4px;
   }
 
+  .cycle-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--divider-color);
+  }
+
+  .cycle-info .time-remaining {
+    font-size: 0.9em;
+    font-weight: 500;
+    color: var(--primary-text-color);
+    white-space: nowrap;
+  }
+
   .not-configured {
     padding: 16px;
     text-align: center;

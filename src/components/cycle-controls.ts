@@ -1,11 +1,11 @@
-import { LitElement, html } from "lit";
+import { LitElement, html, nothing } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import { HomeAssistant } from "custom-card-helpers";
 import { ResolvedConfig } from "../types";
 import {
   callSwitchService,
-  callEsphomeService,
-  entityState,
+  callButtonPress,
+  getControllerStatus,
 } from "../utils/entity-helpers";
 import { cardStyles } from "../styles";
 
@@ -13,55 +13,58 @@ import { cardStyles } from "../styles";
 export class IrrigationCycleControls extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
   @property({ attribute: false }) public resolved!: ResolvedConfig;
-  @property() public devicePrefix?: string;
 
   static styles = cardStyles;
 
   protected render() {
-    const mainState = this.resolved.main_switch
-      ? entityState(this.hass, this.resolved.main_switch)
-      : "off";
-    const isRunning = mainState === "on";
+    if (!this.resolved.main_switch) return nothing;
+
+    const status = getControllerStatus(this.hass, this.resolved);
+    const isRunning = status === "running";
+    const isPaused = status === "paused";
 
     return html`
       <div class="controls">
-        ${!isRunning
+        ${!isRunning && !isPaused
           ? html`
               <ha-icon-button
                 @click=${this._startCycle}
-                title="Start full cycle"
+                title="Start cycle"
               >
                 <ha-icon icon="mdi:play"></ha-icon>
               </ha-icon-button>
             `
-          : html`
+          : nothing}
+        ${isRunning && this.resolved.pause_button
+          ? html`
               <ha-icon-button
                 @click=${this._pause}
                 title="Pause"
               >
                 <ha-icon icon="mdi:pause"></ha-icon>
               </ha-icon-button>
+            `
+          : nothing}
+        ${isPaused
+          ? html`
+              <ha-icon-button
+                @click=${this._resume}
+                title="Resume"
+              >
+                <ha-icon icon="mdi:play-pause"></ha-icon>
+              </ha-icon-button>
+            `
+          : nothing}
+        ${isRunning || isPaused
+          ? html`
               <ha-icon-button
                 @click=${this._stop}
                 title="Stop"
               >
                 <ha-icon icon="mdi:stop"></ha-icon>
               </ha-icon-button>
-            `}
-        <ha-icon-button
-          @click=${this._previousValve}
-          title="Previous valve"
-          .disabled=${!isRunning}
-        >
-          <ha-icon icon="mdi:skip-previous"></ha-icon>
-        </ha-icon-button>
-        <ha-icon-button
-          @click=${this._nextValve}
-          title="Next valve"
-          .disabled=${!isRunning}
-        >
-          <ha-icon icon="mdi:skip-next"></ha-icon>
-        </ha-icon-button>
+            `
+          : nothing}
       </div>
     `;
   }
@@ -69,34 +72,25 @@ export class IrrigationCycleControls extends LitElement {
   private _startCycle(): void {
     if (this.resolved.main_switch) {
       callSwitchService(this.hass, this.resolved.main_switch, true);
-    } else if (this.devicePrefix) {
-      callEsphomeService(this.hass, this.devicePrefix, "start_full_cycle");
     }
   }
 
   private _stop(): void {
     if (this.resolved.main_switch) {
       callSwitchService(this.hass, this.resolved.main_switch, false);
-    } else if (this.devicePrefix) {
-      callEsphomeService(this.hass, this.devicePrefix, "shutdown");
     }
   }
 
   private _pause(): void {
-    if (this.devicePrefix) {
-      callEsphomeService(this.hass, this.devicePrefix, "pause");
+    if (this.resolved.pause_button) {
+      callButtonPress(this.hass, this.resolved.pause_button);
     }
   }
 
-  private _previousValve(): void {
-    if (this.devicePrefix) {
-      callEsphomeService(this.hass, this.devicePrefix, "previous_valve");
-    }
-  }
-
-  private _nextValve(): void {
-    if (this.devicePrefix) {
-      callEsphomeService(this.hass, this.devicePrefix, "next_valve");
+  private _resume(): void {
+    // ESPHome sprinkler: toggling main switch resumes from pause
+    if (this.resolved.main_switch) {
+      callSwitchService(this.hass, this.resolved.main_switch, true);
     }
   }
 }

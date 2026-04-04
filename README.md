@@ -4,12 +4,12 @@ Home Assistant Lovelace card for controlling [ESPHome Sprinkler](https://esphome
 
 ## Features
 
-- Auto-discovery of sprinkler entities from ESPHome device prefix
+- Auto-discovery of sprinkler entities from HA device registry
 - Per-valve control: on/off toggle, enable/disable for cycle, run duration adjustment
-- Cycle controls: start, stop, pause, resume, next/previous valve
-- Settings: multiplier, repeat, auto-advance, reverse, standby, queue enable
-- Queue management: add valves to queue, clear, start from queue
-- Visual config editor for Lovelace UI
+- Cycle controls: start, stop, pause, resume
+- Settings: auto-advance, reverse, standby toggles; multiplier, repeat sliders
+- Status display: controller status, progress bar, time remaining
+- Visual config editor with device picker
 - Responsive design using HA Material Design components
 
 ## Installation
@@ -32,44 +32,44 @@ Home Assistant Lovelace card for controlling [ESPHome Sprinkler](https://esphome
 
 ```yaml
 type: custom:irrigation-card
-device_prefix: garden
-title: Garden Irrigation
+device_id: f4a459c55f0f033b1f72b4815e602d9e
+title: Irrigation
 ```
 
-The `device_prefix` must match your ESPHome node name. The card auto-discovers all controller switches, number entities, and valves.
+Select the device in the visual editor — the `device_id` is filled automatically. The card auto-discovers all controller switches, valve switches, enable switches, duration numbers, and status sensors from the device.
 
 ### Full manual configuration
 
 ```yaml
 type: custom:irrigation-card
-title: Garden Irrigation
-device_prefix: garden
+title: Irrigation
+device_id: f4a459c55f0f033b1f72b4815e602d9e
 
 # Override auto-discovered controller entities
-main_switch: switch.garden_main
-auto_advance_switch: switch.garden_auto_advance
-reverse_switch: switch.garden_reverse
-queue_enable_switch: switch.garden_queue_enable
-standby_switch: switch.garden_standby
-multiplier: number.garden_multiplier
-repeat: number.garden_repeat
+main_switch: switch.start_stop_resume_b
+auto_advance_switch: switch.auto_advance_b
+reverse_switch: switch.reverse_b
+pause_button: button.pause_b
 
-# Manual valve definitions
+# Status sensors
+status_sensor: sensor.status_b
+progress_sensor: sensor.progress_b
+time_remaining_sensor: sensor.time_remaining_b
+
+# Manual valve definitions (overrides auto-discovery)
 valves:
-  - name: Front Lawn
-    valve_switch: switch.garden_front_lawn
-    enable_switch: switch.garden_front_lawn_enable
-    run_duration: number.garden_front_lawn_run_duration
-    icon: mdi:sprinkler-variant
-  - name: Back Garden
-    valve_switch: switch.garden_back_garden
-    enable_switch: switch.garden_back_garden_enable
-    run_duration: number.garden_back_garden_run_duration
+  - name: Zone 1
+    valve_switch: switch.irrigation_node_sprinklers_zone_1
+    enable_switch: switch.enable_sprinklers_zone_1
+    run_duration: number.sprinklers_zone_1
+  - name: Dripline
+    valve_switch: switch.irrigation_node_dripline
+    enable_switch: switch.enable_dripline
+    run_duration: number.dripline
 
 # Display options (all default to true except compact)
 show_controls: true
 show_settings: true
-show_queue: true
 compact: false
 ```
 
@@ -77,15 +77,21 @@ compact: false
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `device_prefix` | string | required* | ESPHome node name for auto-discovery |
-| `title` | string | none | Card title |
+| `device_id` | string | — | HA device ID for auto-discovery |
+| `title` | string | — | Card title |
+| `main_switch` | string | auto | Start/stop/resume switch entity |
+| `auto_advance_switch` | string | auto | Auto-advance switch entity |
+| `reverse_switch` | string | auto | Reverse switch entity |
+| `pause_button` | string | auto | Pause button entity |
+| `status_sensor` | string | auto | Status sensor entity |
+| `progress_sensor` | string | auto | Progress % sensor entity |
+| `time_remaining_sensor` | string | auto | Time remaining sensor entity |
 | `valves` | list | auto | Manual valve definitions |
 | `show_controls` | boolean | true | Show cycle control buttons |
-| `show_settings` | boolean | true | Show multiplier/repeat/toggles |
-| `show_queue` | boolean | true | Show queue panel |
+| `show_settings` | boolean | true | Show settings toggles/sliders |
 | `compact` | boolean | false | Hide duration controls |
 
-*Either `device_prefix` or `valves` must be provided.
+Either `device_id`, `valves`, or `main_switch` must be provided.
 
 ## Development
 

@@ -1,6 +1,10 @@
 import { LitElement, html, css, nothing, PropertyValues } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
-import { HomeAssistant, fireEvent, LovelaceCardEditor } from "custom-card-helpers";
+import {
+  HomeAssistant,
+  fireEvent,
+  LovelaceCardEditor,
+} from "custom-card-helpers";
 import { IrrigationCardConfig, ValveConfig } from "./types";
 import { EDITOR_TAG } from "./const";
 
@@ -22,12 +26,6 @@ export class IrrigationCardEditor
       margin-bottom: 4px;
       color: var(--primary-text-color);
     }
-    .form-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin: 4px 0;
-    }
     .valve-item {
       border: 1px solid var(--divider-color);
       border-radius: 8px;
@@ -40,7 +38,8 @@ export class IrrigationCardEditor
       align-items: center;
     }
     ha-textfield,
-    ha-entity-picker {
+    ha-entity-picker,
+    ha-device-picker {
       display: block;
       width: 100%;
     }
@@ -50,6 +49,11 @@ export class IrrigationCardEditor
       justify-content: space-between;
       padding: 4px 0;
     }
+    .hint {
+      font-size: 0.85em;
+      color: var(--secondary-text-color);
+      padding: 4px 0;
+    }
   `;
 
   public setConfig(config: IrrigationCardConfig): void {
@@ -57,8 +61,7 @@ export class IrrigationCardEditor
   }
 
   protected shouldUpdate(changedProps: PropertyValues): boolean {
-    if (changedProps.has("_config")) return true;
-    return false;
+    return changedProps.has("_config");
   }
 
   protected render() {
@@ -75,46 +78,52 @@ export class IrrigationCardEditor
       </div>
 
       <div class="form-group">
-        <ha-textfield
-          label="Device prefix (ESPHome node name)"
-          .value=${this._config.device_prefix || ""}
-          @input=${(e: InputEvent) =>
-            this._updateConfig(
-              "device_prefix",
-              (e.target as HTMLInputElement).value,
-            )}
-        ></ha-textfield>
+        <ha-device-picker
+          label="ESPHome Sprinkler Device"
+          .hass=${this.hass}
+          .value=${this._config.device_id || ""}
+          @value-changed=${(e: CustomEvent) =>
+            this._updateConfig("device_id", e.detail.value)}
+        ></ha-device-picker>
+        <div class="hint">
+          Select your ESPHome sprinkler device. Entities will be auto-discovered.
+        </div>
       </div>
 
       <div class="form-group">
-        <label>Controller Entities (auto-discovered if prefix set)</label>
-        ${this._renderEntityPicker("Main switch", "main_switch", "switch")}
+        <label>Controller Entities (auto-discovered from device)</label>
+        ${this._renderEntityPicker("Main switch (start/stop)", "main_switch", "switch")}
         ${this._renderEntityPicker("Auto-advance", "auto_advance_switch", "switch")}
         ${this._renderEntityPicker("Reverse", "reverse_switch", "switch")}
-        ${this._renderEntityPicker("Queue enable", "queue_enable_switch", "switch")}
+        ${this._renderEntityPicker("Pause button", "pause_button", "button")}
         ${this._renderEntityPicker("Standby", "standby_switch", "switch")}
+        ${this._renderEntityPicker("Queue enable", "queue_enable_switch", "switch")}
         ${this._renderEntityPicker("Multiplier", "multiplier", "number")}
         ${this._renderEntityPicker("Repeat", "repeat", "number")}
+      </div>
+
+      <div class="form-group">
+        <label>Status Sensors (auto-discovered from device)</label>
+        ${this._renderEntityPicker("Status", "status_sensor", "sensor")}
+        ${this._renderEntityPicker("Progress %", "progress_sensor", "sensor")}
+        ${this._renderEntityPicker("Time remaining", "time_remaining_sensor", "sensor")}
       </div>
 
       <div class="form-group">
         <label>Display Options</label>
         ${this._renderSwitch("Show controls", "show_controls")}
         ${this._renderSwitch("Show settings", "show_settings")}
-        ${this._renderSwitch("Show queue", "show_queue")}
         ${this._renderSwitch("Compact mode", "compact")}
       </div>
 
       <div class="form-group">
-        <label>Valves (auto-discovered if prefix set)</label>
+        <label>Valves (auto-discovered from device)</label>
         ${(this._config.valves || []).map(
           (valve, index) => html`
             <div class="valve-item">
               <div class="valve-header">
                 <span>Valve ${index + 1}</span>
-                <ha-icon-button
-                  @click=${() => this._removeValve(index)}
-                >
+                <ha-icon-button @click=${() => this._removeValve(index)}>
                   <ha-icon icon="mdi:delete"></ha-icon>
                 </ha-icon-button>
               </div>
@@ -122,7 +131,11 @@ export class IrrigationCardEditor
                 label="Name"
                 .value=${valve.name || ""}
                 @input=${(e: InputEvent) =>
-                  this._updateValve(index, "name", (e.target as HTMLInputElement).value)}
+                  this._updateValve(
+                    index,
+                    "name",
+                    (e.target as HTMLInputElement).value,
+                  )}
               ></ha-textfield>
               <ha-entity-picker
                 label="Valve switch"

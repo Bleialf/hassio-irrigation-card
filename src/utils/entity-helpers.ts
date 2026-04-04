@@ -1,96 +1,245 @@
 import { HomeAssistant } from "custom-card-helpers";
-import {
-  CONTROLLER_SUFFIXES,
-  NUMBER_SUFFIXES,
-  VALVE_EXCLUDE_SUFFIXES,
-  DEFAULT_VALVE_ICON,
-} from "../const";
+import { DEFAULT_VALVE_ICON } from "../const";
 import { IrrigationCardConfig, ResolvedConfig, ResolvedValve } from "../types";
 
+interface HassEntity {
+  entity_id: string;
+  device_id?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  [key: string]: any;
+}
+
+/**
+ * Discover entities from a HA device.
+ * hass.entities contains the entity registry keyed by entity_id,
+ * each entry has a device_id field we can match against.
+ */
 export function discoverEntities(
   hass: HomeAssistant,
   config: IrrigationCardConfig,
 ): ResolvedConfig {
-  const prefix = config.device_prefix;
-  const allEntityIds = Object.keys(hass.states);
   const resolved: ResolvedConfig = { valves: [] };
 
-  // Controller switches
-  for (const [key, suffix] of Object.entries(CONTROLLER_SUFFIXES)) {
-    const explicit = config[key as keyof IrrigationCardConfig] as
-      | string
-      | undefined;
-    if (explicit) {
-      (resolved as unknown as Record<string, unknown>)[key] = explicit;
-    } else if (prefix) {
-      const entityId = `switch.${prefix}${suffix}`;
-      if (allEntityIds.includes(entityId)) {
-        (resolved as unknown as Record<string, unknown>)[key] = entityId;
-      }
-    }
-  }
-
-  // Number entities (multiplier, repeat)
-  for (const [key, suffix] of Object.entries(NUMBER_SUFFIXES)) {
-    const explicit = config[key as keyof IrrigationCardConfig] as
-      | string
-      | undefined;
-    if (explicit) {
-      (resolved as unknown as Record<string, unknown>)[key] = explicit;
-    } else if (prefix) {
-      const entityId = `number.${prefix}${suffix}`;
-      if (allEntityIds.includes(entityId)) {
-        (resolved as unknown as Record<string, unknown>)[key] = entityId;
-      }
-    }
-  }
-
-  // Valves
+  // If explicit valves are configured, use them directly
   if (config.valves && config.valves.length > 0) {
     resolved.valves = config.valves.map((v) => ({
-      name:
-        v.name || friendlyName(hass, v.valve_switch) || v.valve_switch,
+      name: v.name || friendlyName(hass, v.valve_switch) || v.valve_switch,
       valve_switch: v.valve_switch,
       enable_switch: v.enable_switch,
       run_duration: v.run_duration,
       icon: v.icon || DEFAULT_VALVE_ICON,
     }));
-  } else if (prefix) {
-    resolved.valves = discoverValves(hass, prefix, allEntityIds);
+  }
+
+  // Copy explicit controller overrides
+  resolved.main_switch = config.main_switch;
+  resolved.auto_advance_switch = config.auto_advance_switch;
+  resolved.reverse_switch = config.reverse_switch;
+  resolved.pause_button = config.pause_button;
+  resolved.queue_enable_switch = config.queue_enable_switch;
+  resolved.standby_switch = config.standby_switch;
+  resolved.multiplier = config.multiplier;
+  resolved.repeat = config.repeat;
+  resolved.status_sensor = config.status_sensor;
+  resolved.progress_sensor = config.progress_sensor;
+  resolved.time_remaining_sensor = config.time_remaining_sensor;
+
+  // Auto-discover from device if device_id is set
+  if (config.device_id) {
+    const deviceEntities = getDeviceEntities(hass, config.device_id);
+    autoDiscoverFromDevice(hass, deviceEntities, resolved, config);
   }
 
   return resolved;
 }
 
+function getDeviceEntities(
+  hass: HomeAssistant,
+  deviceId: string,
+): string[] {
+  const entities = (hass as unknown as { entities: Record<string, HassEntity> })
+    .entities;
+  if (!entities) return [];
+
+  return Object.keys(entities).filter(
+    (eid) => entities[eid].device_id === deviceId,
+  );
+}
+
+function autoDiscoverFromDevice(
+  hass: HomeAssistant,
+  entityIds: string[],
+  resolved: ResolvedConfig,
+  config: IrrigationCardConfig,
+): void {
+  const switches = entityIds.filter((id) => id.startsWith("switch."));
+  const numbers = entityIds.filter((id) => id.startsWith("number."));
+  const sensors = entityIds.filter((id) => id.startsWith("sensor."));
+  const buttons = entityIds.filter((id) => id.startsWith("button."));
+
+  // Controller-level entities (only fill in what's not explicitly configured)
+  if (!config.main_switch) {
+    resolved.main_switch = switches.find((id) =>
+      matchesFriendlyName(hass, id, /start.*stop|main/i),
+    );
+  }
+  if (!config.auto_advance_switch) {
+    resolved.auto_advance_switch = switches.find((id) =>
+      matchesFriendlyName(hass, id, /auto.?advance/i),
+    );
+  }
+  if (!config.reverse_switch) {
+    resolved.reverse_switch = switches.find((id) =>
+      matchesFriendlyName(hass, id, /reverse/i),
+    );
+  }
+  if (!config.pause_button) {
+    resolved.pause_button = buttons.find((id) =>
+      matchesFriendlyName(hass, id, /pause/i),
+    );
+  }
+  if (!config.queue_enable_switch) {
+    resolved.queue_enable_switch = switches.find((id) =>
+      matchesFriendlyName(hass, id, /queue/i),
+    );
+  }
+  if (!config.standby_switch) {
+    resolved.standby_switch = switches.find((id) =>
+      matchesFriendlyName(hass, id, /standby/i),
+    );
+  }
+  if (!config.multiplier) {
+    resolved.multiplier = numbers.find((id) =>
+      matchesFriendlyName(hass, id, /multiplier/i),
+    );
+  }
+  if (!config.repeat) {
+    resolved.repeat = numbers.find((id) =>
+      matchesFriendlyName(hass, id, /repeat/i),
+    );
+  }
+
+  // Status sensors
+  if (!config.status_sensor) {
+    resolved.status_sensor = sensors.find((id) =>
+      matchesFriendlyName(hass, id, /status/i),
+    );
+  }
+  if (!config.progress_sensor) {
+    resolved.progress_sensor = sensors.find((id) =>
+      matchesFriendlyName(hass, id, /progress/i),
+    );
+  }
+  if (!config.time_remaining_sensor) {
+    resolved.time_remaining_sensor = sensors.find((id) =>
+      matchesFriendlyName(hass, id, /time.?remaining/i),
+    );
+  }
+
+  // Valves: auto-discover only if not explicitly configured
+  if (!config.valves || config.valves.length === 0) {
+    resolved.valves = discoverValves(hass, switches, numbers, resolved);
+  }
+}
+
 function discoverValves(
   hass: HomeAssistant,
-  prefix: string,
-  allEntityIds: string[],
+  switches: string[],
+  numbers: string[],
+  resolved: ResolvedConfig,
 ): ResolvedValve[] {
-  const switchPrefix = `switch.${prefix}_`;
-  const valveSwitches = allEntityIds.filter((id) => {
-    if (!id.startsWith(switchPrefix)) return false;
-    const suffix = id.slice(switchPrefix.length - 1); // includes the _
-    return !VALVE_EXCLUDE_SUFFIXES.some((excl) => suffix === excl || suffix.endsWith(excl));
-  });
+  // Controller-level entity IDs to exclude from valve detection
+  const controllerIds = new Set(
+    [
+      resolved.main_switch,
+      resolved.auto_advance_switch,
+      resolved.reverse_switch,
+      resolved.queue_enable_switch,
+      resolved.standby_switch,
+    ].filter(Boolean),
+  );
+
+  // Enable switches to exclude (they'll be matched to valves)
+  const enableSwitches = switches.filter((id) =>
+    matchesFriendlyName(hass, id, /^enable\s/i) ||
+    id.includes("enable_"),
+  );
+  const enableSet = new Set(enableSwitches);
+
+  // Also exclude restart switch and similar non-valve switches
+  const excludePatterns = /restart|connection|firmware/i;
+
+  // Valve switches: switches that are not controller, not enable, not utility
+  const valveSwitches = switches.filter(
+    (id) =>
+      !controllerIds.has(id) &&
+      !enableSet.has(id) &&
+      !matchesFriendlyName(hass, id, excludePatterns),
+  );
 
   return valveSwitches.map((valveSwitch) => {
-    const valveName = valveSwitch.slice(switchPrefix.length);
-    const enableSwitch = `switch.${prefix}_${valveName}_enable`;
-    const runDuration = `number.${prefix}_${valveName}_run_duration`;
+    const fname = friendlyName(hass, valveSwitch) || valveSwitch;
+    // Strip device name prefix from friendly name for display
+    const name = stripDevicePrefix(hass, valveSwitch, fname);
+
+    // Find matching enable switch by looking for similar name with "Enable" prefix
+    const enableSwitch = enableSwitches.find((eid) => {
+      const eName = friendlyName(hass, eid) || "";
+      return eName.toLowerCase().includes(name.toLowerCase());
+    });
+
+    // Find matching run duration number entity by similar name
+    const runDuration = numbers.find((nid) => {
+      const nName = friendlyName(hass, nid) || "";
+      return nName.toLowerCase().includes(name.toLowerCase());
+    });
 
     return {
-      name: friendlyName(hass, valveSwitch) || valveName.replace(/_/g, " "),
+      name,
       valve_switch: valveSwitch,
-      enable_switch: allEntityIds.includes(enableSwitch)
-        ? enableSwitch
-        : undefined,
-      run_duration: allEntityIds.includes(runDuration)
-        ? runDuration
-        : undefined,
+      enable_switch: enableSwitch,
+      run_duration: runDuration,
       icon: DEFAULT_VALVE_ICON,
     };
   });
+}
+
+/**
+ * Strip the device name prefix from a friendly name.
+ * e.g. "Irrigation-Ctrl-Unit-B Sprinklers - zone 1" → "Sprinklers - zone 1"
+ */
+function stripDevicePrefix(
+  hass: HomeAssistant,
+  entityId: string,
+  fname: string,
+): string {
+  const entities = (hass as unknown as { entities: Record<string, HassEntity> })
+    .entities;
+  if (!entities?.[entityId]?.device_id) return fname;
+
+  const devices = (hass as unknown as { devices: Record<string, { name?: string }> })
+    .devices;
+  if (!devices) return fname;
+
+  const device = devices[entities[entityId].device_id!];
+  if (!device?.name) return fname;
+
+  const deviceName = device.name;
+  if (fname.startsWith(deviceName)) {
+    return fname.slice(deviceName.length).replace(/^\s+/, "");
+  }
+  return fname;
+}
+
+function matchesFriendlyName(
+  hass: HomeAssistant,
+  entityId: string,
+  pattern: RegExp,
+): boolean {
+  const fname = friendlyName(hass, entityId) || "";
+  // Match against friendly name without device prefix
+  const stripped = stripDevicePrefix(hass, entityId, fname);
+  return pattern.test(stripped) || pattern.test(entityId);
 }
 
 export function friendlyName(
@@ -138,6 +287,15 @@ export function callSwitchService(
   });
 }
 
+export function callButtonPress(
+  hass: HomeAssistant,
+  entityId: string,
+): void {
+  hass.callService("button", "press", {
+    entity_id: entityId,
+  });
+}
+
 export function callNumberService(
   hass: HomeAssistant,
   entityId: string,
@@ -149,19 +307,18 @@ export function callNumberService(
   });
 }
 
-export function callEsphomeService(
-  hass: HomeAssistant,
-  prefix: string,
-  action: string,
-  data?: Record<string, unknown>,
-): void {
-  hass.callService("esphome", `${prefix}_${action}`, data || {});
-}
-
 export function getControllerStatus(
   hass: HomeAssistant,
   resolved: ResolvedConfig,
-): "idle" | "running" | "paused" | "standby" {
+): string {
+  // Prefer status sensor if available
+  if (resolved.status_sensor) {
+    const status = entityState(hass, resolved.status_sensor);
+    if (status && status !== "unavailable" && status !== "unknown") {
+      return status.toLowerCase();
+    }
+  }
+
   if (
     resolved.standby_switch &&
     entityState(hass, resolved.standby_switch) === "on"
@@ -173,14 +330,7 @@ export function getControllerStatus(
     resolved.main_switch &&
     entityState(hass, resolved.main_switch) === "on"
   ) {
-    // Check if any valve is actually running
-    const anyActive = resolved.valves.some(
-      (v) => entityState(hass, v.valve_switch) === "on",
-    );
-    // If main is on but no valve running, it might be paused
-    // ESPHome doesn't expose a "paused" state directly through entities
-    // so we treat main=on as running
-    return anyActive ? "running" : "running";
+    return "running";
   }
 
   return "idle";
