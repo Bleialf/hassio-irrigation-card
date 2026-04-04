@@ -216,17 +216,11 @@ function discoverValves(
     const fname = friendlyName(hass, valveSwitch) || valveSwitch;
     const name = stripDevicePrefix(hass, valveSwitch, fname);
 
-    // Find matching enable switch by looking for similar name
-    const enableSwitch = enableSwitches.find((eid) => {
-      const eName = friendlyName(hass, eid) || "";
-      return eName.toLowerCase().includes(name.toLowerCase());
-    });
+    // Find matching enable switch by friendly_name or entity_id similarity
+    const enableSwitch = findMatchingEntity(hass, enableSwitches, name, valveSwitch);
 
-    // Find matching run duration number entity by similar name
-    const runDuration = numbers.find((nid) => {
-      const nName = friendlyName(hass, nid) || "";
-      return nName.toLowerCase().includes(name.toLowerCase());
-    });
+    // Find matching run duration number entity
+    const runDuration = findMatchingEntity(hass, numbers, name, valveSwitch);
 
     return {
       name,
@@ -236,6 +230,58 @@ function discoverValves(
       icon: DEFAULT_VALVE_ICON,
     };
   });
+}
+
+/**
+ * Find a matching entity from candidates by friendly_name or entity_id similarity.
+ * Tries multiple strategies:
+ * 1. Friendly name of candidate contains the valve display name
+ * 2. Friendly name of candidate contains the valve friendly name (with device prefix)
+ * 3. Entity ID keyword matching (extract common keywords from valve switch entity_id)
+ */
+function findMatchingEntity(
+  hass: HomeAssistant,
+  candidates: string[],
+  valveDisplayName: string,
+  valveSwitchId: string,
+): string | undefined {
+  // Strategy 1: friendly_name contains stripped valve name
+  const match1 = candidates.find((id) => {
+    const fname = (friendlyName(hass, id) || "").toLowerCase();
+    return fname.includes(valveDisplayName.toLowerCase());
+  });
+  if (match1) return match1;
+
+  // Strategy 2: extract zone/valve identifier from entity_id and match
+  // e.g. switch.irrigation_node_sprinklers_zone_1 -> ["sprinklers", "zone", "1"]
+  // number.sprinklers_zone_1 -> ["sprinklers", "zone", "1"]
+  const valveIdPart = valveSwitchId.split(".")[1] || "";
+  // Remove common prefixes like "irrigation_node_"
+  const valveKeywords = valveIdPart
+    .replace(/^irrigation_node_/, "")
+    .split("_")
+    .filter((w) => w.length > 0);
+
+  if (valveKeywords.length === 0) return undefined;
+
+  const match2 = candidates.find((candidateId) => {
+    const candidateIdPart = candidateId.split(".")[1] || "";
+    // Check if all valve keywords appear in candidate entity_id
+    return valveKeywords.every((kw) => candidateIdPart.includes(kw));
+  });
+  if (match2) return match2;
+
+  // Strategy 3: match just the most specific keywords (last 2 words like "zone_1")
+  if (valveKeywords.length >= 2) {
+    const specificKeywords = valveKeywords.slice(-2);
+    const match3 = candidates.find((candidateId) => {
+      const candidateIdPart = candidateId.split(".")[1] || "";
+      return specificKeywords.every((kw) => candidateIdPart.includes(kw));
+    });
+    return match3;
+  }
+
+  return undefined;
 }
 
 /**
