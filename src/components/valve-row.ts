@@ -10,6 +10,7 @@ import {
   callNumberService,
 } from "../utils/entity-helpers";
 import { localize } from "../localize";
+import { logRender } from "../utils/logger";
 import { cardStyles } from "../styles";
 
 @customElement("irrigation-valve-row")
@@ -64,6 +65,15 @@ export class IrrigationValveRow extends LitElement {
       ? entityState(this.hass, this.valve.enable_switch) !== "off"
       : true;
     const duration = entityNumericValue(this.hass, this.valve.run_duration);
+
+    logRender("valve-row", this.valve.name, {
+      valve_switch: this.valve.valve_switch,
+      enable_switch: this.valve.enable_switch,
+      run_duration: this.valve.run_duration,
+      isOn,
+      isEnabled,
+      duration,
+    });
 
     return html`
       <div class="valve-row">

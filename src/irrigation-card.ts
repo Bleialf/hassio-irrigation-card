@@ -11,6 +11,7 @@ import {
   entityNumericValue,
 } from "./utils/entity-helpers";
 import { localize } from "./localize";
+import { enableDebug, disableDebug, logRender } from "./utils/logger";
 import { cardStyles } from "./styles";
 
 import "./components/valve-row";
@@ -97,6 +98,10 @@ export class IrrigationCard extends LitElement implements LovelaceCard {
     const status = getControllerStatus(this.hass, this._resolved);
     const showControls = this._config.show_controls !== false;
     const showSettings = this._config.show_settings !== false;
+
+    logRender("irrigation-card", `status=${status}, valves=${this._resolved.valves.length}`, {
+      resolved: this._resolved,
+    });
 
     if (this._resolved.valves.length === 0 && !this._resolved.main_switch) {
       return html`
@@ -218,3 +223,13 @@ console.info(
   "color: white; background: #4CAF50; font-weight: bold; padding: 2px 6px; border-radius: 4px 0 0 4px;",
   "color: white; background: #333; font-weight: bold; padding: 2px 6px; border-radius: 0 4px 4px 0;",
 );
+
+// Register global debug toggle: call irrigationCardDebug() in browser console
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(window as any).irrigationCardDebug = (enable = true) => {
+  if (enable) {
+    enableDebug();
+  } else {
+    disableDebug();
+  }
+};
