@@ -2,7 +2,7 @@
 
 Home Assistant Lovelace card for controlling [ESPHome Sprinkler](https://esphome.io/components/sprinkler/) systems.
 
-![Irrigation Card Screenshot](docs/images/screenshot.png)
+<img src="docs/images/screenshot.png" alt="Irrigation Card Screenshot" width="50%">
 
 ## Features
 
