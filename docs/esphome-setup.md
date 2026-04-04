@@ -2,6 +2,8 @@
 
 This guide shows how to set up an ESPHome sprinkler controller that works with the Irrigation Card.
 
+> **Complete example:** Download the full ESPHome config file: [irrigation-ctrl-unit-b.yaml](examples/irrigation-ctrl-unit-b.yaml)
+
 ## Overview
 
 The ESPHome [Sprinkler component](https://esphome.io/components/sprinkler/) provides a full irrigation controller with:
