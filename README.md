@@ -27,6 +27,7 @@ If you find this integration useful, consider supporting its development:
 - ⭐️ Give this repository a star!
 - 🛠️ Contribute code or report issues.
 - 💸 [Become a GitHub Sponsor](https://github.com/sponsors/kratochj)
+- ☕ [Support me on ko-fi](https://ko-fi.com/kratochj)
 
 ---
 
