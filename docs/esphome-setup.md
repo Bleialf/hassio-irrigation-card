@@ -58,7 +58,7 @@ substitutions:
   uom: Min
 ```
 
-### Board and Boot
+### Board, WiFi and Base Config
 
 ```yaml
 esp8266:
@@ -80,6 +80,26 @@ esphome:
       - sprinkler.set_multiplier:
           id: $devicename
           multiplier: 60
+
+# WiFi connection, replace these with values for your WiFi.
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+# Enable logging
+logger:
+
+# Enable over-the-air updates.
+ota:
+  password: !secret ota_password
+
+# Enable Web server.
+web_server:
+  port: 80
+
+time:
+  - platform: homeassistant
+    id: homeassistant_time
 ```
 
 ### Sprinkler Controller
