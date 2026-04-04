@@ -1,5 +1,8 @@
 # Irrigation Card
 
+[![Build](https://github.com/kratochj/hassio-irrigation-card/actions/workflows/build.yml/badge.svg)](https://github.com/kratochj/hassio-irrigation-card/actions/workflows/build.yml)
+[![HACS Validation](https://github.com/kratochj/hassio-irrigation-card/actions/workflows/hacs-validate.yml/badge.svg)](https://github.com/kratochj/hassio-irrigation-card/actions/workflows/hacs-validate.yml)
+
 Home Assistant Lovelace card for controlling [ESPHome Sprinkler](https://esphome.io/components/sprinkler/) systems.
 
 <img src="https://raw.githubusercontent.com/kratochj/hassio-irrigation-card/main/docs/images/screenshot.png" alt="Irrigation Card Screenshot" width="50%">
@@ -14,6 +17,18 @@ Home Assistant Lovelace card for controlling [ESPHome Sprinkler](https://esphome
 - Status display: controller status, progress bar, time remaining
 - Visual config editor with device picker
 - Responsive design using HA Material Design components
+
+---
+
+## Support
+
+If you find this integration useful, consider supporting its development:
+
+- ⭐️ Give this repository a star!
+- 🛠️ Contribute code or report issues.
+- 💸 [Become a GitHub Sponsor](https://github.com/sponsors/kratochj)
+
+---
 
 ## Installation
 
