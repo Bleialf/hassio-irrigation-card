@@ -1,6 +1,7 @@
 import { HomeAssistant } from "custom-card-helpers";
 import { DEFAULT_VALVE_ICON } from "../const";
 import { IrrigationCardConfig, ResolvedConfig, ResolvedValve } from "../types";
+import { logDiscovery, logServiceCall } from "./logger";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type HassAny = any;
@@ -43,11 +44,13 @@ export function discoverEntities(
   // Auto-discover from device if device_id is set
   if (config.device_id) {
     const deviceEntities = getDeviceEntities(hass, config.device_id);
+    logDiscovery(`Device ${config.device_id}: found ${deviceEntities.length} entities (sync)`, deviceEntities);
     if (deviceEntities.length > 0) {
       autoDiscoverFromDevice(hass, deviceEntities, resolved, config);
     }
   }
 
+  logDiscovery("Resolved config", resolved);
   return resolved;
 }
 
@@ -77,9 +80,11 @@ export async function discoverEntitiesAsync(
       .filter((e) => e.device_id === config.device_id)
       .map((e) => e.entity_id);
 
+    logDiscovery(`Device ${config.device_id}: found ${deviceEntities.length} entities (async/WS)`, deviceEntities);
     if (deviceEntities.length > 0) {
       autoDiscoverFromDevice(hass, deviceEntities, resolved, config);
     }
+    logDiscovery("Resolved config (async)", resolved);
   } catch (err) {
     console.error("irrigation-card: Failed to fetch entity registry:", err);
   }
@@ -111,6 +116,8 @@ function autoDiscoverFromDevice(
   const numbers = entityIds.filter((id) => id.startsWith("number."));
   const sensors = entityIds.filter((id) => id.startsWith("sensor."));
   const buttons = entityIds.filter((id) => id.startsWith("button."));
+
+  logDiscovery("Entity breakdown", { switches, numbers, sensors, buttons });
 
   // Controller-level entities (only fill in what's not explicitly configured)
   if (!config.main_switch) {
@@ -250,7 +257,10 @@ function findMatchingEntity(
     const fname = (friendlyName(hass, id) || "").toLowerCase();
     return fname.includes(valveDisplayName.toLowerCase());
   });
-  if (match1) return match1;
+  if (match1) {
+    logDiscovery(`Match for "${valveSwitchId}": "${match1}" (strategy: friendly_name)`);
+    return match1;
+  }
 
   // Strategy 2: extract zone/valve identifier from entity_id and match
   // e.g. switch.irrigation_node_sprinklers_zone_1 -> ["sprinklers", "zone", "1"]
@@ -269,7 +279,10 @@ function findMatchingEntity(
     // Check if all valve keywords appear in candidate entity_id
     return valveKeywords.every((kw) => candidateIdPart.includes(kw));
   });
-  if (match2) return match2;
+  if (match2) {
+    logDiscovery(`Match for "${valveSwitchId}": "${match2}" (strategy: entity_id keywords [${valveKeywords}])`);
+    return match2;
+  }
 
   // Strategy 3: match just the most specific keywords (last 2 words like "zone_1")
   if (valveKeywords.length >= 2) {
@@ -278,9 +291,15 @@ function findMatchingEntity(
       const candidateIdPart = candidateId.split(".")[1] || "";
       return specificKeywords.every((kw) => candidateIdPart.includes(kw));
     });
+    if (match3) {
+      logDiscovery(`Match for "${valveSwitchId}": "${match3}" (strategy: specific keywords [${specificKeywords}])`);
+    } else {
+      logDiscovery(`No match found for "${valveSwitchId}" among`, candidates);
+    }
     return match3;
   }
 
+  logDiscovery(`No match found for "${valveSwitchId}" among`, candidates);
   return undefined;
 }
 
@@ -359,7 +378,9 @@ export function callSwitchService(
   entityId: string,
   turnOn: boolean,
 ): void {
-  hass.callService("switch", turnOn ? "turn_on" : "turn_off", {
+  const service = turnOn ? "turn_on" : "turn_off";
+  logServiceCall("switch", service, { entity_id: entityId });
+  hass.callService("switch", service, {
     entity_id: entityId,
   });
 }
@@ -368,6 +389,7 @@ export function callButtonPress(
   hass: HomeAssistant,
   entityId: string,
 ): void {
+  logServiceCall("button", "press", { entity_id: entityId });
   hass.callService("button", "press", {
     entity_id: entityId,
   });
@@ -378,6 +400,7 @@ export function callNumberService(
   entityId: string,
   value: number,
 ): void {
+  logServiceCall("number", "set_value", { entity_id: entityId, value });
   hass.callService("number", "set_value", {
     entity_id: entityId,
     value,

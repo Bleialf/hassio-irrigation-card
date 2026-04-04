@@ -8,6 +8,7 @@ import {
   getControllerStatus,
 } from "../utils/entity-helpers";
 import { localize } from "../localize";
+import { logRender } from "../utils/logger";
 import { cardStyles } from "../styles";
 
 @customElement("irrigation-cycle-controls")
@@ -23,6 +24,11 @@ export class IrrigationCycleControls extends LitElement {
     const status = getControllerStatus(this.hass, this.resolved);
     const isRunning = status === "running";
     const isPaused = status === "paused";
+
+    logRender("cycle-controls", `status=${status}`, {
+      main_switch: this.resolved.main_switch,
+      pause_button: this.resolved.pause_button,
+    });
 
     return html`
       <div class="controls">
