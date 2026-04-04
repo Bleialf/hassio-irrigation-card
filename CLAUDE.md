@@ -50,6 +50,15 @@ Output is a single ES module file `dist/irrigation-card.js` (inlined dynamic imp
 - `.github/workflows/release.yml` builds and attaches `dist/irrigation-card.js` to GitHub releases
 - HACS downloads the JS file from release assets
 
+## Commit Message Format
+
+- No attribution to Claude in commit messages
+- First line: imperative form, max 50 chars. Start with ticket ID from branch name (e.g. `COREO-123`, `MAFIN-234`) followed by short description
+- Empty line after first line
+- Detailed description as bullet points, 2-3 sentences max
+- Focus on business logic changes, skip formal/mechanical changes if there are business logic ones
+- Avoid overly verbose descriptions or unnecessary details
+
 ## TypeScript Notes
 
 - `useDefineForClassFields: false` in tsconfig.json is required for Lit decorators (`@property`, `@state`, `@customElement`)
