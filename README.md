@@ -5,6 +5,7 @@ Home Assistant Lovelace card for controlling [ESPHome Sprinkler](https://esphome
 ## Features
 
 - Auto-discovery of sprinkler entities from HA device registry
+- Localization: English and Czech (auto-detected from HA settings)
 - Per-valve control: on/off toggle, enable/disable for cycle, run duration adjustment
 - Cycle controls: start, stop, pause, resume
 - Settings: auto-advance, reverse, standby toggles; multiplier, repeat sliders
@@ -92,6 +93,10 @@ compact: false
 | `compact` | boolean | false | Hide duration controls |
 
 Either `device_id`, `valves`, or `main_switch` must be provided.
+
+## ESPHome Setup
+
+For a complete guide on setting up the ESPHome sprinkler controller (hardware, firmware config, entity mapping), see **[ESPHome Setup Guide](docs/esphome-setup.md)**.
 
 ## Development
 
