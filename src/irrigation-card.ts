@@ -2,7 +2,7 @@ import { LitElement, html, nothing, PropertyValues } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { HomeAssistant, LovelaceCard } from "custom-card-helpers";
 import { IrrigationCardConfig, ResolvedConfig } from "./types";
-import { CARD_TAG, CARD_NAME, CARD_DESCRIPTION, EDITOR_TAG } from "./const";
+import { CARD_TAG, CARD_NAME, CARD_DESCRIPTION, CARD_VERSION, EDITOR_TAG } from "./const";
 import {
   discoverEntities,
   discoverEntitiesAsync,
@@ -211,3 +211,10 @@ export class IrrigationCard extends LitElement implements LovelaceCard {
   description: CARD_DESCRIPTION,
   preview: true,
 });
+
+// Console banner
+console.info(
+  `%c ${CARD_NAME.toUpperCase()} %c v${CARD_VERSION} `,
+  "color: white; background: #4CAF50; font-weight: bold; padding: 2px 6px; border-radius: 4px 0 0 4px;",
+  "color: white; background: #333; font-weight: bold; padding: 2px 6px; border-radius: 0 4px 4px 0;",
+);
