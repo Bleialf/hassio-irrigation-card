@@ -2,17 +2,13 @@ import { HomeAssistant } from "custom-card-helpers";
 import { DEFAULT_VALVE_ICON } from "../const";
 import { IrrigationCardConfig, ResolvedConfig, ResolvedValve } from "../types";
 
-interface HassEntity {
-  entity_id: string;
-  device_id?: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  [key: string]: any;
-}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type HassAny = any;
 
 /**
  * Discover entities from a HA device.
- * hass.entities contains the entity registry keyed by entity_id,
- * each entry has a device_id field we can match against.
+ * Uses hass.entities (entity registry) to find entities belonging to a device.
+ * Falls back to WebSocket call if hass.entities is not available.
  */
 export function discoverEntities(
   hass: HomeAssistant,
@@ -47,7 +43,45 @@ export function discoverEntities(
   // Auto-discover from device if device_id is set
   if (config.device_id) {
     const deviceEntities = getDeviceEntities(hass, config.device_id);
-    autoDiscoverFromDevice(hass, deviceEntities, resolved, config);
+    if (deviceEntities.length > 0) {
+      autoDiscoverFromDevice(hass, deviceEntities, resolved, config);
+    }
+  }
+
+  return resolved;
+}
+
+/**
+ * Async version of entity discovery that uses WebSocket API as fallback.
+ * Call this once after config is set, store the result.
+ */
+export async function discoverEntitiesAsync(
+  hass: HomeAssistant,
+  config: IrrigationCardConfig,
+): Promise<ResolvedConfig> {
+  const resolved = discoverEntities(hass, config);
+
+  // If sync discovery found valves or no device_id, return
+  if (resolved.valves.length > 0 || !config.device_id) {
+    return resolved;
+  }
+
+  // Fallback: use WebSocket to fetch entity registry
+  try {
+    const entityRegistry: Array<{ entity_id: string; device_id: string }> =
+      await (hass as HassAny).callWS({
+        type: "config/entity_registry/list",
+      });
+
+    const deviceEntities = entityRegistry
+      .filter((e) => e.device_id === config.device_id)
+      .map((e) => e.entity_id);
+
+    if (deviceEntities.length > 0) {
+      autoDiscoverFromDevice(hass, deviceEntities, resolved, config);
+    }
+  } catch (err) {
+    console.error("irrigation-card: Failed to fetch entity registry:", err);
   }
 
   return resolved;
@@ -57,13 +91,14 @@ function getDeviceEntities(
   hass: HomeAssistant,
   deviceId: string,
 ): string[] {
-  const entities = (hass as unknown as { entities: Record<string, HassEntity> })
-    .entities;
-  if (!entities) return [];
-
-  return Object.keys(entities).filter(
-    (eid) => entities[eid].device_id === deviceId,
-  );
+  // Try hass.entities (entity registry, available in newer HA)
+  const entities = (hass as HassAny).entities;
+  if (entities && typeof entities === "object") {
+    return Object.keys(entities).filter(
+      (eid) => entities[eid]?.device_id === deviceId,
+    );
+  }
+  return [];
 }
 
 function autoDiscoverFromDevice(
@@ -160,9 +195,9 @@ function discoverValves(
   );
 
   // Enable switches to exclude (they'll be matched to valves)
-  const enableSwitches = switches.filter((id) =>
-    matchesFriendlyName(hass, id, /^enable\s/i) ||
-    id.includes("enable_"),
+  const enableSwitches = switches.filter(
+    (id) =>
+      matchesFriendlyName(hass, id, /^enable\s/i) || id.includes("enable_"),
   );
   const enableSet = new Set(enableSwitches);
 
@@ -179,10 +214,9 @@ function discoverValves(
 
   return valveSwitches.map((valveSwitch) => {
     const fname = friendlyName(hass, valveSwitch) || valveSwitch;
-    // Strip device name prefix from friendly name for display
     const name = stripDevicePrefix(hass, valveSwitch, fname);
 
-    // Find matching enable switch by looking for similar name with "Enable" prefix
+    // Find matching enable switch by looking for similar name
     const enableSwitch = enableSwitches.find((eid) => {
       const eName = friendlyName(hass, eid) || "";
       return eName.toLowerCase().includes(name.toLowerCase());
@@ -213,15 +247,13 @@ function stripDevicePrefix(
   entityId: string,
   fname: string,
 ): string {
-  const entities = (hass as unknown as { entities: Record<string, HassEntity> })
-    .entities;
+  const entities = (hass as HassAny).entities;
   if (!entities?.[entityId]?.device_id) return fname;
 
-  const devices = (hass as unknown as { devices: Record<string, { name?: string }> })
-    .devices;
+  const devices = (hass as HassAny).devices;
   if (!devices) return fname;
 
-  const device = devices[entities[entityId].device_id!];
+  const device = devices[entities[entityId].device_id];
   if (!device?.name) return fname;
 
   const deviceName = device.name;
@@ -237,7 +269,6 @@ function matchesFriendlyName(
   pattern: RegExp,
 ): boolean {
   const fname = friendlyName(hass, entityId) || "";
-  // Match against friendly name without device prefix
   const stripped = stripDevicePrefix(hass, entityId, fname);
   return pattern.test(stripped) || pattern.test(entityId);
 }

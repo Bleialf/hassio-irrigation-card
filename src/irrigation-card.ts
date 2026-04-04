@@ -5,6 +5,7 @@ import { IrrigationCardConfig, ResolvedConfig } from "./types";
 import { CARD_TAG, CARD_NAME, CARD_DESCRIPTION, EDITOR_TAG } from "./const";
 import {
   discoverEntities,
+  discoverEntitiesAsync,
   getControllerStatus,
   entityState,
   entityNumericValue,
@@ -19,7 +20,8 @@ import "./components/settings-panel";
 export class IrrigationCard extends LitElement implements LovelaceCard {
   @property({ attribute: false }) public hass!: HomeAssistant;
   @state() private _config!: IrrigationCardConfig;
-  @state() private _resolved!: ResolvedConfig;
+  @state() private _resolved: ResolvedConfig = { valves: [] };
+  private _asyncDiscoveryDone = false;
 
   static styles = cardStyles;
 
@@ -40,40 +42,56 @@ export class IrrigationCard extends LitElement implements LovelaceCard {
       throw new Error("Please specify device_id, valves, or main_switch");
     }
     this._config = config;
+    this._asyncDiscoveryDone = false;
   }
 
   public getCardSize(): number {
-    if (!this._resolved) return 3;
     return 2 + this._resolved.valves.length;
   }
 
   protected shouldUpdate(changedProps: PropertyValues): boolean {
-    if (changedProps.has("_config")) return true;
+    if (changedProps.has("_config") || changedProps.has("_resolved"))
+      return true;
     if (changedProps.has("hass")) {
       const oldHass = changedProps.get("hass") as HomeAssistant | undefined;
       if (!oldHass) return true;
-      const newResolved = discoverEntities(this.hass, this._config);
-      const relevantEntities = this._getRelevantEntities(newResolved);
-      const changed = relevantEntities.some(
+      // Trigger async discovery on first hass update if not done
+      if (!this._asyncDiscoveryDone) {
+        this._runAsyncDiscovery();
+      }
+      const relevantEntities = this._getRelevantEntities(this._resolved);
+      return relevantEntities.some(
         (id) => oldHass.states[id] !== this.hass.states[id],
       );
-      if (changed) {
-        this._resolved = newResolved;
-      }
-      return changed;
     }
     return false;
   }
 
   protected updated(changedProps: PropertyValues): void {
     super.updated(changedProps);
-    if (changedProps.has("_config") || !this._resolved) {
+    if (changedProps.has("_config") && this.hass) {
+      // Try sync discovery first
       this._resolved = discoverEntities(this.hass, this._config);
+      // If sync didn't find valves, trigger async
+      if (
+        this._resolved.valves.length === 0 &&
+        this._config.device_id &&
+        !this._asyncDiscoveryDone
+      ) {
+        this._runAsyncDiscovery();
+      }
     }
   }
 
+  private async _runAsyncDiscovery(): Promise<void> {
+    if (this._asyncDiscoveryDone || !this.hass || !this._config) return;
+    this._asyncDiscoveryDone = true;
+    const resolved = await discoverEntitiesAsync(this.hass, this._config);
+    this._resolved = resolved;
+  }
+
   protected render() {
-    if (!this._config || !this.hass || !this._resolved) return nothing;
+    if (!this._config || !this.hass) return nothing;
 
     const status = getControllerStatus(this.hass, this._resolved);
     const showControls = this._config.show_controls !== false;
