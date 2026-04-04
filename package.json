@@ -1,0 +1,29 @@
+{
+  "name": "irrigation-card",
+  "version": "1.0.0",
+  "description": "Home Assistant Lovelace card for ESPHome sprinkler controllers",
+  "author": "kratochj",
+  "license": "MIT",
+  "main": "dist/irrigation-card.js",
+  "scripts": {
+    "start": "rollup -c --watch",
+    "build": "rollup -c",
+    "lint": "eslint src/**/*.ts"
+  },
+  "dependencies": {
+    "custom-card-helpers": "^1.9.0",
+    "lit": "^3.1.0"
+  },
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^25.0.0",
+    "@rollup/plugin-json": "^6.0.0",
+    "@rollup/plugin-node-resolve": "^15.2.0",
+    "@rollup/plugin-terser": "^1.0.0",
+    "@rollup/plugin-typescript": "^11.1.0",
+    "@types/node": "^20.0.0",
+    "rollup": "^4.9.0",
+    "rollup-plugin-serve": "^3.0.0",
+    "tslib": "^2.6.0",
+    "typescript": "~5.3.0"
+  }
+}
