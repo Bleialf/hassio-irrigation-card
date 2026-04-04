@@ -1,4 +1,4 @@
-import { LitElement, html, nothing, PropertyValues } from "lit";
+import { LitElement, html, css, nothing, PropertyValues } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import { HomeAssistant } from "custom-card-helpers";
 import { ResolvedValve } from "../types";
@@ -18,7 +18,28 @@ export class IrrigationValveRow extends LitElement {
   @property({ attribute: false }) public valve!: ResolvedValve;
   @property({ type: Boolean }) public compact = false;
 
-  static styles = cardStyles;
+  static styles = [
+    cardStyles,
+    css`
+      .duration-btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 4px;
+        border-radius: 50%;
+        color: var(--primary-text-color);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .duration-btn:hover {
+        background: var(--divider-color);
+      }
+      .duration-btn ha-icon {
+        --mdc-icon-size: 18px;
+      }
+    `,
+  ];
 
   protected shouldUpdate(changedProps: PropertyValues): boolean {
     if (changedProps.has("valve") || changedProps.has("compact")) return true;
@@ -67,20 +88,25 @@ export class IrrigationValveRow extends LitElement {
         ${this.valve.run_duration && !this.compact
           ? html`
               <div class="valve-duration">
-                <span>
-                  ${duration ?? "?"}
-                  ${localize(this.hass, "valve.min")}
-                </span>
-                <ha-icon-button
-                  @click=${() => this._adjustDuration(-1, duration, attrs)}
+                <button
+                  class="duration-btn"
+                  @click=${(e: Event) => {
+                    e.stopPropagation();
+                    this._adjustDuration(-1, duration, attrs);
+                  }}
                 >
                   <ha-icon icon="mdi:minus"></ha-icon>
-                </ha-icon-button>
-                <ha-icon-button
-                  @click=${() => this._adjustDuration(1, duration, attrs)}
+                </button>
+                <span>${duration ?? "?"} ${localize(this.hass, "valve.min")}</span>
+                <button
+                  class="duration-btn"
+                  @click=${(e: Event) => {
+                    e.stopPropagation();
+                    this._adjustDuration(1, duration, attrs);
+                  }}
                 >
                   <ha-icon icon="mdi:plus"></ha-icon>
-                </ha-icon-button>
+                </button>
               </div>
             `
           : nothing}
