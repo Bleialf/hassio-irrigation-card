@@ -64,7 +64,6 @@ export class IrrigationValveRow extends LitElement {
       ? entityState(this.hass, this.valve.enable_switch) !== "off"
       : true;
     const duration = entityNumericValue(this.hass, this.valve.run_duration);
-    const attrs = entityAttributes(this.hass, this.valve.run_duration);
 
     return html`
       <div class="valve-row">
@@ -92,7 +91,7 @@ export class IrrigationValveRow extends LitElement {
                   class="duration-btn"
                   @click=${(e: Event) => {
                     e.stopPropagation();
-                    this._adjustDuration(-1, duration, attrs);
+                    this._adjustDuration(-1);
                   }}
                 >
                   <ha-icon icon="mdi:minus"></ha-icon>
@@ -102,7 +101,7 @@ export class IrrigationValveRow extends LitElement {
                   class="duration-btn"
                   @click=${(e: Event) => {
                     e.stopPropagation();
-                    this._adjustDuration(1, duration, attrs);
+                    this._adjustDuration(1);
                   }}
                 >
                   <ha-icon icon="mdi:plus"></ha-icon>
@@ -139,12 +138,11 @@ export class IrrigationValveRow extends LitElement {
     callSwitchService(this.hass, this.valve.enable_switch, !isEnabled);
   }
 
-  private _adjustDuration(
-    delta: number,
-    current: number | undefined,
-    attrs: Record<string, unknown>,
-  ): void {
-    if (!this.valve.run_duration || current === undefined) return;
+  private _adjustDuration(delta: number): void {
+    if (!this.valve.run_duration) return;
+    const current = entityNumericValue(this.hass, this.valve.run_duration);
+    if (current === undefined) return;
+    const attrs = entityAttributes(this.hass, this.valve.run_duration);
     const min = (attrs.min as number) ?? 0;
     const max = (attrs.max as number) ?? 60;
     const step = (attrs.step as number) ?? 1;
