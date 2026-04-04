@@ -8,6 +8,24 @@ import {
 import { IrrigationCardConfig, ValveConfig } from "./types";
 import { EDITOR_TAG } from "./const";
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Force HA to load its internal components (device-picker, entity-picker, etc.)
+// They are lazy-loaded and not available until a built-in card triggers them.
+const loadHaComponents = async () => {
+  if (customElements.get("ha-device-picker")) return;
+  const helpers = await (window as any).loadCardHelpers?.();
+  if (!helpers) return;
+  const entitiesCard = await helpers.createCardElement({
+    type: "entities",
+    entities: [],
+  });
+  if (entitiesCard) {
+    await entitiesCard.constructor?.getConfigElement?.();
+  }
+};
+loadHaComponents();
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
 @customElement(EDITOR_TAG)
 export class IrrigationCardEditor
   extends LitElement
@@ -15,6 +33,7 @@ export class IrrigationCardEditor
 {
   @property({ attribute: false }) public hass!: HomeAssistant;
   @state() private _config!: IrrigationCardConfig;
+  @state() private _helpers = false;
 
   static styles = css`
     .form-group {
@@ -56,12 +75,22 @@ export class IrrigationCardEditor
     }
   `;
 
+  public async connectedCallback(): Promise<void> {
+    super.connectedCallback();
+    // Ensure HA components are loaded when editor opens
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const helpers = await (window as any).loadCardHelpers?.();
+    if (helpers) {
+      this._helpers = true;
+    }
+  }
+
   public setConfig(config: IrrigationCardConfig): void {
     this._config = config;
   }
 
   protected shouldUpdate(changedProps: PropertyValues): boolean {
-    return changedProps.has("_config");
+    return changedProps.has("_config") || changedProps.has("_helpers");
   }
 
   protected render() {
