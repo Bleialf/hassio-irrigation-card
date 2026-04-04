@@ -100,6 +100,17 @@ Either `device_id`, `valves`, or `main_switch` must be provided.
 
 For a complete guide on setting up the ESPHome sprinkler controller (hardware, firmware config, entity mapping), see **[ESPHome Setup Guide](docs/esphome-setup.md)**.
 
+## Troubleshooting
+
+Open the browser developer console (F12) and run:
+
+```js
+irrigationCardDebug()       // enable debug logging
+irrigationCardDebug(false)  // disable debug logging
+```
+
+This logs entity discovery details, service calls (switch/button/number), and card render state to help diagnose configuration or connectivity issues.
+
 ## Development
 
 ```bash
