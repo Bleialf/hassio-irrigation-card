@@ -53,6 +53,7 @@ Output is a single ES module file `dist/irrigation-card.js` (inlined dynamic imp
 
 ## Git Workflow
 
+- **GitHub Issues**: Before starting implementation, create a GH issue describing the task. Regularly update the issue with progress comments (what's done, what's in progress, blockers). Reference the issue in commits and the PR.
 - **Feature branches**: Always create a new branch for new work (`feature/short-description` or `fix/short-description`). Never commit directly to `main`.
 - **Pull Requests**: After the user confirms the implementation is OK, create a PR to `main` with a description of what was done. Do not merge without user confirmation.
 - **Semantic Versioning**: Use semver for releases — MAJOR.MINOR.PATCH:
