@@ -1,5 +1,5 @@
 import { LitElement, html, css, nothing, PropertyValues } from "lit";
-import { customElement, property } from "lit/decorators.js";
+import { customElement, property, state } from "lit/decorators.js";
 import { HomeAssistant } from "custom-card-helpers";
 import { ResolvedValve } from "../types";
 import {
@@ -18,6 +18,10 @@ export class IrrigationValveRow extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
   @property({ attribute: false }) public valve!: ResolvedValve;
   @property({ type: Boolean }) public compact = false;
+
+  // Optimistic duration value — shown immediately after +/- click,
+  // cleared when HA state catches up.
+  @state() private _optimisticDuration: number | undefined;
 
   static styles = [
     cardStyles,
@@ -43,7 +47,12 @@ export class IrrigationValveRow extends LitElement {
   ];
 
   protected shouldUpdate(changedProps: PropertyValues): boolean {
-    if (changedProps.has("valve") || changedProps.has("compact")) return true;
+    if (
+      changedProps.has("valve") ||
+      changedProps.has("compact") ||
+      changedProps.has("_optimisticDuration")
+    )
+      return true;
     if (changedProps.has("hass")) {
       const oldHass = changedProps.get("hass") as HomeAssistant | undefined;
       if (!oldHass) return true;
@@ -52,9 +61,17 @@ export class IrrigationValveRow extends LitElement {
         this.valve.enable_switch,
         this.valve.run_duration,
       ].filter(Boolean) as string[];
-      return entities.some(
+      const changed = entities.some(
         (id) => oldHass.states[id] !== this.hass.states[id],
       );
+      // Clear optimistic value when HA state catches up
+      if (changed && this._optimisticDuration !== undefined) {
+        const realValue = entityNumericValue(this.hass, this.valve.run_duration);
+        if (realValue === this._optimisticDuration) {
+          this._optimisticDuration = undefined;
+        }
+      }
+      return changed;
     }
     return false;
   }
@@ -64,7 +81,8 @@ export class IrrigationValveRow extends LitElement {
     const isEnabled = this.valve.enable_switch
       ? entityState(this.hass, this.valve.enable_switch) !== "off"
       : true;
-    const duration = entityNumericValue(this.hass, this.valve.run_duration);
+    const realDuration = entityNumericValue(this.hass, this.valve.run_duration);
+    const duration = this._optimisticDuration ?? realDuration;
 
     logRender("valve-row", this.valve.name, {
       valve_switch: this.valve.valve_switch,
@@ -73,6 +91,7 @@ export class IrrigationValveRow extends LitElement {
       isOn,
       isEnabled,
       duration,
+      optimistic: this._optimisticDuration,
     });
 
     return html`
@@ -150,13 +169,16 @@ export class IrrigationValveRow extends LitElement {
 
   private _adjustDuration(delta: number): void {
     if (!this.valve.run_duration) return;
-    const current = entityNumericValue(this.hass, this.valve.run_duration);
+    const current =
+      this._optimisticDuration ??
+      entityNumericValue(this.hass, this.valve.run_duration);
     if (current === undefined) return;
     const attrs = entityAttributes(this.hass, this.valve.run_duration);
     const min = (attrs.min as number) ?? 0;
     const max = (attrs.max as number) ?? 60;
     const step = (attrs.step as number) ?? 1;
     const newVal = Math.min(max, Math.max(min, current + delta * step));
+    this._optimisticDuration = newVal;
     callNumberService(this.hass, this.valve.run_duration, newVal);
   }
 }
