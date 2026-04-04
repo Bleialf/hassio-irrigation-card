@@ -1,6 +1,6 @@
 {
   "name": "irrigation-card",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "Home Assistant Lovelace card for ESPHome sprinkler controllers",
   "author": "kratochj",
   "license": "MIT",
