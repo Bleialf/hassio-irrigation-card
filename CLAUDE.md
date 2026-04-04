@@ -51,6 +51,16 @@ Output is a single ES module file `dist/irrigation-card.js` (inlined dynamic imp
 - `.github/workflows/build.yml` builds on push/PR and uploads artifact
 - HACS downloads the JS file from release assets
 
+## Git Workflow
+
+- **Feature branches**: Always create a new branch for new work (`feature/short-description` or `fix/short-description`). Never commit directly to `main`.
+- **Pull Requests**: After the user confirms the implementation is OK, create a PR to `main` with a description of what was done. Do not merge without user confirmation.
+- **Semantic Versioning**: Use semver for releases — MAJOR.MINOR.PATCH:
+  - PATCH: bug fixes, minor tweaks
+  - MINOR: new features, backward-compatible changes
+  - MAJOR: breaking changes
+- Update version in both `package.json` and `src/const.ts` before creating a release.
+
 ## Commit Message Format
 
 - No attribution to Claude in commit messages
