@@ -9,10 +9,9 @@ import { IrrigationCardConfig, ValveConfig } from "./types";
 import { EDITOR_TAG } from "./const";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// Force HA to load its internal components (device-picker, entity-picker, etc.)
-// They are lazy-loaded and not available until a built-in card triggers them.
+// Force HA to load entity-picker and other internal components.
 const loadHaComponents = async () => {
-  if (customElements.get("ha-device-picker")) return;
+  if (customElements.get("ha-entity-picker")) return;
   const helpers = await (window as any).loadCardHelpers?.();
   if (!helpers) return;
   const entitiesCard = await helpers.createCardElement({
@@ -26,6 +25,14 @@ const loadHaComponents = async () => {
 loadHaComponents();
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
+interface HassDevice {
+  id: string;
+  name?: string;
+  name_by_user?: string;
+  manufacturer?: string;
+  model?: string;
+}
+
 @customElement(EDITOR_TAG)
 export class IrrigationCardEditor
   extends LitElement
@@ -33,7 +40,6 @@ export class IrrigationCardEditor
 {
   @property({ attribute: false }) public hass!: HomeAssistant;
   @state() private _config!: IrrigationCardConfig;
-  @state() private _helpers = false;
 
   static styles = css`
     .form-group {
@@ -57,10 +63,19 @@ export class IrrigationCardEditor
       align-items: center;
     }
     ha-textfield,
-    ha-entity-picker,
-    ha-device-picker {
+    ha-entity-picker {
       display: block;
       width: 100%;
+    }
+    .device-select {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid var(--divider-color);
+      border-radius: 4px;
+      background: var(--card-background-color, var(--primary-background-color));
+      color: var(--primary-text-color);
+      font-size: 1em;
+      cursor: pointer;
     }
     .switch-row {
       display: flex;
@@ -75,26 +90,39 @@ export class IrrigationCardEditor
     }
   `;
 
-  public async connectedCallback(): Promise<void> {
-    super.connectedCallback();
-    // Ensure HA components are loaded when editor opens
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const helpers = await (window as any).loadCardHelpers?.();
-    if (helpers) {
-      this._helpers = true;
-    }
-  }
-
   public setConfig(config: IrrigationCardConfig): void {
     this._config = config;
   }
 
   protected shouldUpdate(changedProps: PropertyValues): boolean {
-    return changedProps.has("_config") || changedProps.has("_helpers");
+    return changedProps.has("_config") || changedProps.has("hass");
+  }
+
+  private _getDevices(): HassDevice[] {
+    const devices = (this.hass as unknown as { devices?: Record<string, HassDevice> })
+      .devices;
+    if (!devices) return [];
+    return Object.values(devices).sort((a, b) =>
+      (a.name_by_user || a.name || "").localeCompare(
+        b.name_by_user || b.name || "",
+      ),
+    );
+  }
+
+  private _getSelectedDeviceName(): string {
+    if (!this._config.device_id) return "";
+    const devices = (this.hass as unknown as { devices?: Record<string, HassDevice> })
+      .devices;
+    if (!devices) return this._config.device_id;
+    const device = devices[this._config.device_id];
+    if (!device) return this._config.device_id;
+    return device.name_by_user || device.name || this._config.device_id;
   }
 
   protected render() {
     if (!this.hass || !this._config) return nothing;
+
+    const devices = this._getDevices();
 
     return html`
       <div class="form-group">
@@ -107,16 +135,37 @@ export class IrrigationCardEditor
       </div>
 
       <div class="form-group">
-        <ha-device-picker
-          label="ESPHome Sprinkler Device"
-          .hass=${this.hass}
-          .value=${this._config.device_id || ""}
-          @value-changed=${(e: CustomEvent) =>
-            this._updateConfig("device_id", e.detail.value)}
-        ></ha-device-picker>
-        <div class="hint">
-          Select your ESPHome sprinkler device. Entities will be auto-discovered.
-        </div>
+        <label>ESPHome Sprinkler Device</label>
+        <select
+          class="device-select"
+          @change=${(e: Event) => {
+            const value = (e.target as HTMLSelectElement).value;
+            this._updateConfig("device_id", value || undefined);
+          }}
+        >
+          <option value="" ?selected=${!this._config.device_id}>
+            -- Select device --
+          </option>
+          ${devices.map(
+            (device) => html`
+              <option
+                value=${device.id}
+                ?selected=${device.id === this._config.device_id}
+              >
+                ${device.name_by_user || device.name || device.id}
+                ${device.manufacturer ? ` (${device.manufacturer})` : ""}
+              </option>
+            `,
+          )}
+        </select>
+        ${this._config.device_id
+          ? html`<div class="hint">
+              Selected: ${this._getSelectedDeviceName()}
+            </div>`
+          : html`<div class="hint">
+              Select your ESPHome sprinkler device. Entities will be
+              auto-discovered.
+            </div>`}
       </div>
 
       <div class="form-group">
