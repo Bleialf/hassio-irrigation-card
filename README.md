@@ -2,6 +2,8 @@
 
 Home Assistant Lovelace card for controlling [ESPHome Sprinkler](https://esphome.io/components/sprinkler/) systems.
 
+![Irrigation Card Screenshot](docs/images/screenshot.png)
+
 ## Features
 
 - Auto-discovery of sprinkler entities from HA device registry
