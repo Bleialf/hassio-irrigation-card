@@ -10,6 +10,7 @@ import {
   entityState,
   entityNumericValue,
 } from "./utils/entity-helpers";
+import { localize } from "./localize";
 import { cardStyles } from "./styles";
 
 import "./components/valve-row";
@@ -39,7 +40,7 @@ export class IrrigationCard extends LitElement implements LovelaceCard {
 
   public setConfig(config: IrrigationCardConfig): void {
     if (!config.device_id && !config.valves?.length && !config.main_switch) {
-      throw new Error("Please specify device_id, valves, or main_switch");
+      throw new Error(localize(undefined, "card.error_no_config"));
     }
     this._config = config;
     this._asyncDiscoveryDone = false;
@@ -101,8 +102,7 @@ export class IrrigationCard extends LitElement implements LovelaceCard {
       return html`
         <ha-card>
           <div class="not-configured">
-            No sprinkler entities found. Select a device or configure entities
-            manually.
+            ${localize(this.hass, "card.not_configured")}
           </div>
         </ha-card>
       `;

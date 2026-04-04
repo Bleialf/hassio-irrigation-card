@@ -7,6 +7,7 @@ import {
 } from "custom-card-helpers";
 import { IrrigationCardConfig, ValveConfig } from "./types";
 import { EDITOR_TAG } from "./const";
+import { localize } from "./localize";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // Force HA to load entity-picker and other internal components.
@@ -124,10 +125,12 @@ export class IrrigationCardEditor
 
     const devices = this._getDevices();
 
+    const t = (key: string) => localize(this.hass, key);
+
     return html`
       <div class="form-group">
         <ha-textfield
-          label="Title"
+          label=${t("editor.title")}
           .value=${this._config.title || ""}
           @input=${(e: InputEvent) =>
             this._updateConfig("title", (e.target as HTMLInputElement).value)}
@@ -135,7 +138,7 @@ export class IrrigationCardEditor
       </div>
 
       <div class="form-group">
-        <label>ESPHome Sprinkler Device</label>
+        <label>${t("editor.device_label")}</label>
         <select
           class="device-select"
           @change=${(e: Event) => {
@@ -144,7 +147,7 @@ export class IrrigationCardEditor
           }}
         >
           <option value="" ?selected=${!this._config.device_id}>
-            -- Select device --
+            ${t("editor.device_placeholder")}
           </option>
           ${devices.map(
             (device) => html`
@@ -160,53 +163,50 @@ export class IrrigationCardEditor
         </select>
         ${this._config.device_id
           ? html`<div class="hint">
-              Selected: ${this._getSelectedDeviceName()}
+              ${t("editor.device_selected")} ${this._getSelectedDeviceName()}
             </div>`
-          : html`<div class="hint">
-              Select your ESPHome sprinkler device. Entities will be
-              auto-discovered.
-            </div>`}
+          : html`<div class="hint">${t("editor.device_hint")}</div>`}
       </div>
 
       <div class="form-group">
-        <label>Controller Entities (auto-discovered from device)</label>
-        ${this._renderEntityPicker("Main switch (start/stop)", "main_switch", "switch")}
-        ${this._renderEntityPicker("Auto-advance", "auto_advance_switch", "switch")}
-        ${this._renderEntityPicker("Reverse", "reverse_switch", "switch")}
-        ${this._renderEntityPicker("Pause button", "pause_button", "button")}
-        ${this._renderEntityPicker("Standby", "standby_switch", "switch")}
-        ${this._renderEntityPicker("Queue enable", "queue_enable_switch", "switch")}
-        ${this._renderEntityPicker("Multiplier", "multiplier", "number")}
-        ${this._renderEntityPicker("Repeat", "repeat", "number")}
+        <label>${t("editor.controller_entities")}</label>
+        ${this._renderEntityPicker(t("editor.main_switch"), "main_switch", "switch")}
+        ${this._renderEntityPicker(t("editor.auto_advance"), "auto_advance_switch", "switch")}
+        ${this._renderEntityPicker(t("editor.reverse"), "reverse_switch", "switch")}
+        ${this._renderEntityPicker(t("editor.pause_button"), "pause_button", "button")}
+        ${this._renderEntityPicker(t("editor.standby"), "standby_switch", "switch")}
+        ${this._renderEntityPicker(t("editor.queue_enable"), "queue_enable_switch", "switch")}
+        ${this._renderEntityPicker(t("editor.multiplier"), "multiplier", "number")}
+        ${this._renderEntityPicker(t("editor.repeat"), "repeat", "number")}
       </div>
 
       <div class="form-group">
-        <label>Status Sensors (auto-discovered from device)</label>
-        ${this._renderEntityPicker("Status", "status_sensor", "sensor")}
-        ${this._renderEntityPicker("Progress %", "progress_sensor", "sensor")}
-        ${this._renderEntityPicker("Time remaining", "time_remaining_sensor", "sensor")}
+        <label>${t("editor.status_sensors")}</label>
+        ${this._renderEntityPicker(t("editor.status"), "status_sensor", "sensor")}
+        ${this._renderEntityPicker(t("editor.progress"), "progress_sensor", "sensor")}
+        ${this._renderEntityPicker(t("editor.time_remaining"), "time_remaining_sensor", "sensor")}
       </div>
 
       <div class="form-group">
-        <label>Display Options</label>
-        ${this._renderSwitch("Show controls", "show_controls")}
-        ${this._renderSwitch("Show settings", "show_settings")}
-        ${this._renderSwitch("Compact mode", "compact")}
+        <label>${t("editor.display_options")}</label>
+        ${this._renderSwitch(t("editor.show_controls"), "show_controls")}
+        ${this._renderSwitch(t("editor.show_settings"), "show_settings")}
+        ${this._renderSwitch(t("editor.compact_mode"), "compact")}
       </div>
 
       <div class="form-group">
-        <label>Valves (auto-discovered from device)</label>
+        <label>${t("editor.valves")}</label>
         ${(this._config.valves || []).map(
           (valve, index) => html`
             <div class="valve-item">
               <div class="valve-header">
-                <span>Valve ${index + 1}</span>
+                <span>${t("editor.valve_n")} ${index + 1}</span>
                 <ha-icon-button @click=${() => this._removeValve(index)}>
                   <ha-icon icon="mdi:delete"></ha-icon>
                 </ha-icon-button>
               </div>
               <ha-textfield
-                label="Name"
+                label=${t("editor.valve_name")}
                 .value=${valve.name || ""}
                 @input=${(e: InputEvent) =>
                   this._updateValve(
@@ -216,7 +216,7 @@ export class IrrigationCardEditor
                   )}
               ></ha-textfield>
               <ha-entity-picker
-                label="Valve switch"
+                label=${t("editor.valve_switch")}
                 .hass=${this.hass}
                 .value=${valve.valve_switch || ""}
                 .includeDomains=${["switch"]}
@@ -224,7 +224,7 @@ export class IrrigationCardEditor
                   this._updateValve(index, "valve_switch", e.detail.value)}
               ></ha-entity-picker>
               <ha-entity-picker
-                label="Enable switch"
+                label=${t("editor.enable_switch")}
                 .hass=${this.hass}
                 .value=${valve.enable_switch || ""}
                 .includeDomains=${["switch"]}
@@ -232,7 +232,7 @@ export class IrrigationCardEditor
                   this._updateValve(index, "enable_switch", e.detail.value)}
               ></ha-entity-picker>
               <ha-entity-picker
-                label="Run duration"
+                label=${t("editor.run_duration")}
                 .hass=${this.hass}
                 .value=${valve.run_duration || ""}
                 .includeDomains=${["number"]}
@@ -242,7 +242,7 @@ export class IrrigationCardEditor
             </div>
           `,
         )}
-        <mwc-button @click=${this._addValve}>Add Valve</mwc-button>
+        <mwc-button @click=${this._addValve}>${t("editor.add_valve")}</mwc-button>
       </div>
     `;
   }

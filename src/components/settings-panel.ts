@@ -9,6 +9,7 @@ import {
   callSwitchService,
   callNumberService,
 } from "../utils/entity-helpers";
+import { localize } from "../localize";
 import { cardStyles } from "../styles";
 
 @customElement("irrigation-settings-panel")
@@ -30,14 +31,16 @@ export class IrrigationSettingsPanel extends LitElement {
 
     return html`
       <div class="settings-panel">
-        <div class="section-title">Settings</div>
-        ${this._renderSlider("Multiplier", this.resolved.multiplier)}
-        ${this._renderSlider("Repeat", this.resolved.repeat)}
+        <div class="section-title">
+          ${localize(this.hass, "settings.title")}
+        </div>
+        ${this._renderSlider(localize(this.hass, "settings.multiplier"), this.resolved.multiplier)}
+        ${this._renderSlider(localize(this.hass, "settings.repeat"), this.resolved.repeat)}
         <div class="toggles">
-          ${this._renderToggle("Auto-advance", this.resolved.auto_advance_switch)}
-          ${this._renderToggle("Reverse", this.resolved.reverse_switch)}
-          ${this._renderToggle("Standby", this.resolved.standby_switch)}
-          ${this._renderToggle("Queue", this.resolved.queue_enable_switch)}
+          ${this._renderToggle(localize(this.hass, "settings.auto_advance"), this.resolved.auto_advance_switch)}
+          ${this._renderToggle(localize(this.hass, "settings.reverse"), this.resolved.reverse_switch)}
+          ${this._renderToggle(localize(this.hass, "settings.standby"), this.resolved.standby_switch)}
+          ${this._renderToggle(localize(this.hass, "settings.queue"), this.resolved.queue_enable_switch)}
         </div>
       </div>
     `;
@@ -61,8 +64,7 @@ export class IrrigationSettingsPanel extends LitElement {
             .step=${step}
             .value=${value ?? min}
             pin
-            @change=${(e: Event) =>
-              this._onSliderChange(entityId, e)}
+            @change=${(e: Event) => this._onSliderChange(entityId, e)}
             style="flex:1"
           ></ha-slider>
           <span class="setting-value">${value ?? "?"}</span>

@@ -9,6 +9,7 @@ import {
   callSwitchService,
   callNumberService,
 } from "../utils/entity-helpers";
+import { localize } from "../localize";
 import { cardStyles } from "../styles";
 
 @customElement("irrigation-valve-row")
@@ -53,7 +54,9 @@ export class IrrigationValveRow extends LitElement {
         <div class="valve-info">
           <div class="valve-name">${this.valve.name}</div>
           ${isOn
-            ? html`<div class="valve-status">Running</div>`
+            ? html`<div class="valve-status">
+                ${localize(this.hass, "valve.running")}
+              </div>`
             : nothing}
           ${isOn
             ? html`<div class="progress-bar">
@@ -64,7 +67,10 @@ export class IrrigationValveRow extends LitElement {
         ${this.valve.run_duration && !this.compact
           ? html`
               <div class="valve-duration">
-                <span>${duration ?? "?"} min</span>
+                <span>
+                  ${duration ?? "?"}
+                  ${localize(this.hass, "valve.min")}
+                </span>
                 <ha-icon-button
                   .path=${"M19,13H5V11H19V13Z"}
                   @click=${() => this._adjustDuration(-1, duration, attrs)}
@@ -81,7 +87,7 @@ export class IrrigationValveRow extends LitElement {
               <ha-switch
                 .checked=${isEnabled}
                 @change=${this._toggleEnable}
-                title="Include in cycle"
+                title=${localize(this.hass, "valve.include_in_cycle")}
               ></ha-switch>
             `
           : nothing}

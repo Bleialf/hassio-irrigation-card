@@ -7,6 +7,7 @@ import {
   callButtonPress,
   getControllerStatus,
 } from "../utils/entity-helpers";
+import { localize } from "../localize";
 import { cardStyles } from "../styles";
 
 @customElement("irrigation-cycle-controls")
@@ -29,7 +30,7 @@ export class IrrigationCycleControls extends LitElement {
           ? html`
               <ha-icon-button
                 @click=${this._startCycle}
-                title="Start cycle"
+                title=${localize(this.hass, "controls.start")}
               >
                 <ha-icon icon="mdi:play"></ha-icon>
               </ha-icon-button>
@@ -39,7 +40,7 @@ export class IrrigationCycleControls extends LitElement {
           ? html`
               <ha-icon-button
                 @click=${this._pause}
-                title="Pause"
+                title=${localize(this.hass, "controls.pause")}
               >
                 <ha-icon icon="mdi:pause"></ha-icon>
               </ha-icon-button>
@@ -49,7 +50,7 @@ export class IrrigationCycleControls extends LitElement {
           ? html`
               <ha-icon-button
                 @click=${this._resume}
-                title="Resume"
+                title=${localize(this.hass, "controls.resume")}
               >
                 <ha-icon icon="mdi:play-pause"></ha-icon>
               </ha-icon-button>
@@ -59,7 +60,7 @@ export class IrrigationCycleControls extends LitElement {
           ? html`
               <ha-icon-button
                 @click=${this._stop}
-                title="Stop"
+                title=${localize(this.hass, "controls.stop")}
               >
                 <ha-icon icon="mdi:stop"></ha-icon>
               </ha-icon-button>
@@ -88,7 +89,6 @@ export class IrrigationCycleControls extends LitElement {
   }
 
   private _resume(): void {
-    // ESPHome sprinkler: toggling main switch resumes from pause
     if (this.resolved.main_switch) {
       callSwitchService(this.hass, this.resolved.main_switch, true);
     }
