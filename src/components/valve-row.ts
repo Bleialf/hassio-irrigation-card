@@ -23,6 +23,27 @@ export class IrrigationValveRow extends LitElement {
   // cleared when HA state catches up.
   @state() private _optimisticDuration: number | undefined;
 
+  // Per-second tick to redraw the progress bar while the valve is running.
+  @state() private _tick = 0;
+  private _tickInterval?: number;
+
+  connectedCallback(): void {
+    super.connectedCallback();
+    this._tickInterval = window.setInterval(() => {
+      if (entityState(this.hass, this.valve?.valve_switch) === "on") {
+        this._tick++;
+      }
+    }, 1000);
+  }
+
+  disconnectedCallback(): void {
+    super.disconnectedCallback();
+    if (this._tickInterval !== undefined) {
+      clearInterval(this._tickInterval);
+      this._tickInterval = undefined;
+    }
+  }
+
   static styles = [
     cardStyles,
     css`
@@ -50,7 +71,8 @@ export class IrrigationValveRow extends LitElement {
     if (
       changedProps.has("valve") ||
       changedProps.has("compact") ||
-      changedProps.has("_optimisticDuration")
+      changedProps.has("_optimisticDuration") ||
+      changedProps.has("_tick")
     )
       return true;
     if (changedProps.has("hass")) {
@@ -109,7 +131,10 @@ export class IrrigationValveRow extends LitElement {
             : nothing}
           ${isOn
             ? html`<div class="progress-bar">
-                <div class="fill" style="width: 50%"></div>
+                <div
+                  class="fill"
+                  style="width: ${this._valveProgress(duration)}%"
+                ></div>
               </div>`
             : nothing}
         </div>
@@ -165,6 +190,20 @@ export class IrrigationValveRow extends LitElement {
     const isEnabled =
       entityState(this.hass, this.valve.enable_switch) !== "off";
     callSwitchService(this.hass, this.valve.enable_switch, !isEnabled);
+  }
+
+  // Compute per-valve progress (0-100) from the valve switch's last_changed
+  // timestamp and the configured run_duration (minutes). Independent of the
+  // cycle-wide time_remaining sensor, so it works correctly per valve.
+  private _valveProgress(duration: number | undefined): number {
+    if (!duration || duration <= 0) return 0;
+    const state = this.hass.states[this.valve.valve_switch];
+    if (!state || !state.last_changed) return 0;
+    const startedAt = new Date(state.last_changed).getTime();
+    if (!Number.isFinite(startedAt)) return 0;
+    const elapsedSeconds = (Date.now() - startedAt) / 1000;
+    const totalSeconds = duration * 60;
+    return Math.min(100, Math.max(0, (elapsedSeconds / totalSeconds) * 100));
   }
 
   private _adjustDuration(delta: number): void {
