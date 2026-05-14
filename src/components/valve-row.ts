@@ -17,6 +17,7 @@ import { cardStyles } from "../styles";
 export class IrrigationValveRow extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
   @property({ attribute: false }) public valve!: ResolvedValve;
+  @property({ type: Number }) public multiplier = 1;
   @property({ type: Boolean }) public compact = false;
 
   // Optimistic duration value — shown immediately after +/- click,
@@ -71,6 +72,7 @@ export class IrrigationValveRow extends LitElement {
     if (
       changedProps.has("valve") ||
       changedProps.has("compact") ||
+      changedProps.has("multiplier") ||
       changedProps.has("_optimisticDuration") ||
       changedProps.has("_tick")
     )
@@ -133,7 +135,7 @@ export class IrrigationValveRow extends LitElement {
             ? html`<div class="progress-bar">
                 <div
                   class="fill"
-                  style="width: ${this._valveProgress(duration)}%"
+                  style="width: ${100 - this._valveProgress(duration)}%"
                 ></div>
               </div>`
             : nothing}
@@ -193,8 +195,9 @@ export class IrrigationValveRow extends LitElement {
   }
 
   // Compute per-valve progress (0-100) from the valve switch's last_changed
-  // timestamp and the configured run_duration (minutes). Independent of the
-  // cycle-wide time_remaining sensor, so it works correctly per valve.
+  // timestamp and the configured run_duration (minutes) × multiplier.
+  // Repeat is not factored in: the valve switch toggles off/on between
+  // repeats, so last_changed resets and the bar restarts per segment.
   private _valveProgress(duration: number | undefined): number {
     if (!duration || duration <= 0) return 0;
     const state = this.hass.states[this.valve.valve_switch];
@@ -202,7 +205,8 @@ export class IrrigationValveRow extends LitElement {
     const startedAt = new Date(state.last_changed).getTime();
     if (!Number.isFinite(startedAt)) return 0;
     const elapsedSeconds = (Date.now() - startedAt) / 1000;
-    const totalSeconds = duration * 60;
+    const multiplier = this.multiplier > 0 ? this.multiplier : 1;
+    const totalSeconds = duration * 60 * multiplier;
     return Math.min(100, Math.max(0, (elapsedSeconds / totalSeconds) * 100));
   }
 
